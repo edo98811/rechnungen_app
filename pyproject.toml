@@ -1,0 +1,20 @@
+[project]
+name = "receipt-scanner"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "anthropic>=0.40",
+    "openpyxl>=3.1",
+    "pydantic-settings>=2.5",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]

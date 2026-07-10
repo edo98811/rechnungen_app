@@ -1,0 +1,13 @@
+{
+  "name": "receipt-scanner",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "backend",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"]
+    }
+  },
+  "postCreateCommand": "pip install --no-cache-dir -e .",
+  "forwardPorts": [8000]
+}
