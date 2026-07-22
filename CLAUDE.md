@@ -69,14 +69,33 @@ far: `anthropic_api_key: str = ""`. Module-level singleton: `settings`.
 
 ### `app/api/receipts.py`
 
-JSON API router (`tags=["receipts"]`). Only route so far: `GET /receipts` →
-stub returning `[]`. This is where the upload endpoint and the aggregate
-Excel export endpoint will go.
+JSON API router (`tags=["receipts"]`). `GET /receipts` → stub returning
+`[]`. `POST /receipts/upload` — takes a multipart `UploadFile`, validates
+`content_type` against `SupportedMediaType` (400 if unsupported), calls
+`extract_receipt`, stores the result via `session_store.save_receipt`,
+returns `{"id": ..., "receipt": ...}`. `GET /receipts/{receipt_id}/export`
+— looks up the receipt via `session_store.get_receipt` (404 if missing),
+returns `receipt_to_excel(receipt)` bytes as an `.xlsx` attachment
+(`Content-Disposition: attachment`).
 
 ### `app/web/routes.py`
 
-Jinja2 HTML router. Only route so far: `GET /` → renders `index.html`.
-Uses `Jinja2Templates(directory="app/templates")`.
+Jinja2 HTML router. `GET /` → renders `index.html` (upload form). `POST
+/upload` — same extraction + `session_store.save_receipt` flow as the API
+route (calls the services directly, not the API over HTTP), renders
+`result.html` with the receipt and its `receipt_id`. Uses
+`Jinja2Templates(directory="app/templates")`.
+
+### `app/services/session_store.py`
+
+In-memory-only receipt store: `_receipts: dict[str, Receipt]` at module
+scope. `save_receipt(receipt) -> str` generates a `uuid4().hex` id, stores
+the receipt, returns the id. `get_receipt(receipt_id) -> Receipt | None`.
+No persistence — cleared on process restart, not shared across workers.
+This is the deliberate stand-in for real per-browser session storage until
+the signed-cookie identity work lands: the id is simply handed back to the
+client (embedded in the `result.html` download link) rather than tied to
+any cookie/session concept yet.
 
 ### `app/templates/base.html`
 
@@ -85,8 +104,15 @@ Base layout: `<head>` with title + link to `/static/styles.css`, and a
 
 ### `app/templates/index.html`
 
-Extends `base.html`. Static placeholder copy only — no upload form built
-yet.
+Extends `base.html`. Upload form: `<form action="/upload" method="post"
+enctype="multipart/form-data">` with a file input restricted to the
+supported image MIME types via `accept`.
+
+### `app/templates/result.html`
+
+Extends `base.html`. Renders the extracted `Receipt` (store, date, an
+items table, subtotal/tax/total) plus a "Download Excel" link to
+`/api/receipts/{receipt_id}/export` and a link back to `/`.
 
 ### `app/static/styles.css`
 
@@ -137,11 +163,20 @@ All `__init__.py` files (`app/`, `app/api/`, `app/web/`, `app/services/`,
       pyright-clean
 - [x] `services/excel_export.py` — openpyxl export, typed, pyright-clean,
       verified against a fixture receipt
-- [ ] Upload route (api + web)
+- [x] Upload route (api + web) — `POST /api/receipts/upload` and `POST
+      /upload`, plus `GET /api/receipts/{id}/export` for the Excel
+      download. Results held only in the in-memory
+      `services/session_store.py` (see File Reference), not persisted.
+      Pyright-clean; routing, 400 (bad media type), and 404 (unknown id)
+      paths verified against a running container. `extract_receipt` itself
+      still only verified with fixtures, not a real photo — see the
+      `extraction.py` entry above.
 - [ ] Persistence (SQLite via SQLModel) + per-browser signed-cookie
       identity + `services/storage.py` (saving the uploaded image) — all
       deferred together, not started. `storage.py` was scaffolded then
       deleted: no persistence yet means nothing to save the image *for*.
+      `session_store.py`'s in-memory dict is the interim stand-in and will
+      likely be replaced or backed by this once it lands.
 
 ## Anthropic SDK calls — typing
 
