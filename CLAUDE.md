@@ -46,8 +46,10 @@ change materially — stale entries here are worse than no entry.
   `app/`, runs `uvicorn app.main:app` on `0.0.0.0:8000` with no `--reload`
   (this is the production command).
 - `docker-compose.yml` — one `backend` service, builds from `Dockerfile`,
-  publishes `8000:8000`, loads `.env`, bind-mounts `./app:/app/app`, and
-  overrides the container command to add `--reload` for local dev only.
+  publishes `8000:8000`, loads `.env`, bind-mounts the whole repo root
+  (`.:/app`, not just `app/`) so `.git`, `.claude/`, etc. are visible and
+  live-editable inside the devcontainer too, and overrides the container
+  command to add `--reload` for local dev only.
 - `.env` — real secrets, gitignored. `.env.example` — template, committed.
   Currently just `ANTHROPIC_API_KEY`.
 - `.gitignore` — standard Python ignores + `.env` + `uploads/`.
