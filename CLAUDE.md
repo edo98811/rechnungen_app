@@ -54,7 +54,21 @@ change materially — stale entries here are worse than no entry.
   Currently just `ANTHROPIC_API_KEY`.
 - `.gitignore` — standard Python ignores + `.env` + `uploads/`.
 - `.devcontainer/devcontainer.json` — reopens VSCode inside the `backend`
-  compose service, forwards port 8000.
+  compose service, forwards port 8000. Features: `common-utils` (creates a
+  non-root `vscode` user, uid/gid 1000, with passwordless sudo), `node`,
+  `claude-code`. `remoteUser: vscode` — VS Code terminals and lifecycle
+  commands (postCreateCommand/postStartCommand) run as `vscode`, not root;
+  the container's main `uvicorn` process (from the `Dockerfile`/compose
+  `command`) is unaffected and still runs as root. This split exists
+  because Claude Code's `bypassPermissions` mode refuses to run as
+  root/sudo — `postStartCommand` writes
+  `permissions.defaultMode: bypassPermissions` +
+  `skipDangerousModePermissionPrompt: true` to the (non-root) user's own
+  `~/.claude/settings.json` inside the container on every start, so Claude
+  Code doesn't prompt for common actions there. This is container-scoped
+  only — it doesn't touch host-side Claude Code settings.
+  `postCreateCommand` uses `sudo pip install -e .` since the non-root user
+  can't write to the system site-packages directly.
 - `.claude/settings.json` — allowlists `docker compose *`, `docker *`,
   `cat *`, `ls *` for this project (no prompts for those).
 
