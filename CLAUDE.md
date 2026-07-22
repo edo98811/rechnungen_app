@@ -51,7 +51,11 @@ change materially — stale entries here are worse than no entry.
   live-editable inside the devcontainer too, and overrides the container
   command to add `--reload` for local dev only.
 - `.env` — real secrets, gitignored. `.env.example` — template, committed.
-  Currently just `ANTHROPIC_API_KEY`.
+  `ANTHROPIC_API_KEY` (used by the app) and `CLAUDE_CODE_OAUTH_TOKEN` (lets
+  Claude Code inside the devcontainer authenticate automatically via
+  `claude setup-token`, no interactive `/login` needed — confirmed working
+  as long as the container is recreated, not just restarted, after `.env`
+  changes, since `env_file` values are read at container creation).
 - `.gitignore` — standard Python ignores + `.env` + `uploads/`.
 - `.devcontainer/devcontainer.json` — reopens VSCode inside the `backend`
   compose service, forwards port 8000. Features: `common-utils` (creates a
