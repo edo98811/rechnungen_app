@@ -7,6 +7,9 @@ COPY app ./app
 
 FROM base AS dev
 
+RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install --no-cache-dir -e .[dev]
 
 FROM base AS production
