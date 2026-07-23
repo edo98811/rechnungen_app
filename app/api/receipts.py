@@ -1,14 +1,15 @@
 from typing import cast, get_args
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import Response
 
+from app.auth import require_login_api
 from app.models.receipt import Receipt
 from app.services.excel_export import receipt_to_excel
 from app.services.extraction import SupportedMediaType, extract_receipt
 from app.services.session_store import get_receipt, save_receipt
 
-router = APIRouter(tags=["receipts"])
+router = APIRouter(tags=["receipts"], dependencies=[Depends(require_login_api)])
 
 SUPPORTED_MEDIA_TYPES: tuple[SupportedMediaType, ...] = get_args(SupportedMediaType)
 
