@@ -19,12 +19,15 @@ def sample_receipt() -> Receipt:
 
 
 @pytest.fixture(autouse=True)
-def _clear_session_store():
-    # app.services.session_store._receipts is a module-level dict acting as
-    # an in-memory store. It persists across tests unless cleared here, so
-    # every test gets a clean slate before and after running.
-    from app.services import session_store
+def _isolated_session_store(tmp_path, monkeypatch):
+    # session_store is now SQLite-backed (see
+    # app/services/session_store.py) and reads settings.database_path
+    # fresh on every call, so pointing it at a per-test tmp file is enough
+    # to give every test a clean, isolated store without any explicit
+    # clearing/teardown.
+    from app.config import settings
 
-    session_store._receipts.clear()
+    monkeypatch.setattr(
+        settings, "database_path", str(tmp_path / "test_session_store.db")
+    )
     yield
-    session_store._receipts.clear()

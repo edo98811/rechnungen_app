@@ -4,7 +4,7 @@
 
 Receipt Scanner — extracts line items from photographed German supermarket
 receipts (Rechnungen) into structured data, exportable as Excel. Single
-user today, in-memory storage only (no persistence yet).
+user today, SQLite-backed persistence.
 
 ## Stack
 
@@ -23,8 +23,9 @@ user today, in-memory storage only (no persistence yet).
 - Authentication — start with a single user, but build the model so more
   users can be added later (not full self-service signup, just
   multi-user-capable from the start).
-- Persistence — replace `session_store.py`'s in-memory dict with a SQLite
-  database so receipts survive restarts and are no longer per-process.
+- Persistence — done: `session_store.py` is now SQLite-backed (see file
+  reference below) so receipts survive restarts and are no longer
+  per-process.
 
 ## File structure
 
@@ -71,7 +72,9 @@ app/
 - `app/main.py` — FastAPI entrypoint. Mounts `/static`, includes
   `api_router` under `/api` and `web_router` unprefixed. `GET /health`.
 - `app/config.py` — `Settings(BaseSettings)` from pydantic-settings,
-  reads `.env`. Module-level singleton `settings`.
+  reads `.env`. Module-level singleton `settings`. Includes
+  `database_path` (default `data/receipts.db`, env override
+  `DATABASE_PATH`) for the SQLite store.
 - `app/api/receipts.py` — JSON API router. `GET /receipts` (stub `[]`),
   `POST /receipts/upload` (extract + store, returns id + receipt),
   `GET /receipts/{id}/export` (returns `.xlsx` bytes).
@@ -82,9 +85,16 @@ app/
   -> Receipt`, the Claude vision extraction call.
 - `app/services/excel_export.py` — `receipt_to_excel(receipt) -> bytes`,
   builds an xlsx workbook in memory via openpyxl.
-- `app/services/session_store.py` — in-memory `dict[str, Receipt]` store,
-  `save_receipt` / `get_receipt`. No persistence, not shared across
-  workers.
+- `app/services/session_store.py` — SQLite-backed store (raw stdlib
+  `sqlite3`, no ORM) with two tables, `receipts` and `receipt_items`
+  (one row per line item, so per-item queries stay plain SQL). Schema
+  migrations are plain SQL scripts tracked via `PRAGMA user_version`
+  (see `_MIGRATIONS`), not Alembic. `save_receipt` / `get_receipt` /
+  `list_receipts` keep their existing call shapes; `get_receipt` and
+  `list_receipts` now return `StoredReceipt` (tagged `user_id`,
+  currently always `"default"` — no `users` table yet). Reads
+  `settings.database_path` fresh on every call (no cached connection),
+  creating the parent directory if needed.
 - `app/models/receipt.py` — Pydantic shapes: `ReceiptItem`, `Receipt`.
 - `app/templates/base.html` — base layout, `{% block content %}`.
 - `app/templates/index.html` — upload form.

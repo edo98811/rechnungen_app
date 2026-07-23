@@ -7,3 +7,6 @@ __pycache__/
 uploads/
 CHANGES.md
 .claude
+*.db
+*.db-journal
+data/
