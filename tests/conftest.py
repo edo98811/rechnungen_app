@@ -1,3 +1,11 @@
+import os
+
+# Must run before app.main (and therefore app.config.settings) is imported
+# by any test module — main.py raises at import time if SESSION_SECRET_KEY
+# is unset, which would otherwise make the whole suite uncollectible
+# whenever a real .env isn't present (fresh clone, CI, etc.).
+os.environ.setdefault("SESSION_SECRET_KEY", "test-secret-key-not-for-production")
+
 import pytest
 
 from app.models.receipt import Receipt, ReceiptItem

@@ -9,6 +9,11 @@
 <body>
   <main class="page">
     <div class="card">
+      {% if request.session.get('auth_user') %}
+      <form action="/logout" method="post" class="logout-form">
+        <button type="submit" class="btn btn-ghost btn-logout">Log out</button>
+      </form>
+      {% endif %}
       {% block content %}{% endblock %}
     </div>
   </main>

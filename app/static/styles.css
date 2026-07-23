@@ -241,3 +241,51 @@ tbody tr:nth-child(even) {
   flex-direction: column;
   gap: 0.75rem;
 }
+
+.logout-form {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+
+.btn-logout {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  width: auto;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  text-align: left;
+}
+
+.field label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.field input {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 1rem;
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.error-message {
+  color: #dc2626;
+  background: color-mix(in srgb, #dc2626 10%, transparent);
+  border: 1px solid color-mix(in srgb, #dc2626 30%, transparent);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  text-align: left;
+}

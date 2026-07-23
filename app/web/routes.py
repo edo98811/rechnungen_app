@@ -1,12 +1,13 @@
 from typing import cast, get_args
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from fastapi.templating import Jinja2Templates
 
+from app.auth import require_login_web
 from app.services.extraction import SupportedMediaType, extract_receipt
 from app.services.session_store import save_receipt
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_login_web)])
 templates = Jinja2Templates(directory="app/templates")
 
 SUPPORTED_MEDIA_TYPES: tuple[SupportedMediaType, ...] = get_args(SupportedMediaType)
