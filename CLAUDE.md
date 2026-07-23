@@ -67,8 +67,8 @@ app/
 - `docker-compose.yml` — one `backend` service, builds `target: dev`,
   publishes `8000:8000`, loads `.env`, bind-mounts the repo root,
   overrides the command to add `--reload` for local dev.
-- `.env` / `.env.example` — secrets (`ANTHROPIC_API_KEY`,
-  `CLAUDE_CODE_OAUTH_TOKEN`) / committed template.
+- `.env` / `.env.example` — secrets (`ANTHROPIC_API_KEY`, `AUTH_USERNAME`,
+  `AUTH_PASSWORD_HASH`, `SESSION_SECRET_KEY`) / committed template.
 - `app/main.py` — FastAPI entrypoint. Mounts `/static`, includes
   `api_router` under `/api` and `web_router` unprefixed. `GET /health`.
 - `app/config.py` — `Settings(BaseSettings)` from pydantic-settings,
