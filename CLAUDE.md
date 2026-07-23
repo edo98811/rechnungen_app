@@ -13,8 +13,18 @@ user today, in-memory storage only (no persistence yet).
 - Extraction: Claude API vision (`messages.parse` + Pydantic `output_format`),
   `claude-opus-4-8`
 - Excel export: openpyxl
-- Dev loop: devcontainer + docker-compose, `uvicorn --reload` with a live
-  volume mount
+- Dev loop: edit on host, run via `docker compose` (`uvicorn --reload`
+  with a live volume mount, no devcontainer). `Dockerfile` has `dev`
+  (pytest/httpx/pyright) and `production` (lean) stages; compose builds
+  `target: dev`. Tests run via `docker compose run --rm backend pytest`.
+
+## Next steps
+
+- Authentication — start with a single user, but build the model so more
+  users can be added later (not full self-service signup, just
+  multi-user-capable from the start).
+- Persistence — replace `session_store.py`'s in-memory dict with a SQLite
+  database so receipts survive restarts and are no longer per-process.
 
 ## File structure
 
@@ -23,7 +33,6 @@ pyproject.toml
 Dockerfile
 docker-compose.yml
 .env / .env.example
-.devcontainer/devcontainer.json
 app/
   main.py
   config.py
@@ -50,16 +59,15 @@ app/
 - `pyproject.toml` — package `receipt-scanner`, Python >=3.12. Deps:
   fastapi, uvicorn[standard], jinja2, python-multipart, anthropic,
   openpyxl, pydantic-settings.
-- `Dockerfile` — `python:3.12-slim`, installs from `pyproject.toml`, runs
-  `uvicorn app.main:app` on `0.0.0.0:8000` (production command, no
-  `--reload`).
-- `docker-compose.yml` — one `backend` service, publishes `8000:8000`,
-  loads `.env`, bind-mounts the repo root, overrides the command to add
-  `--reload` for local dev.
+- `Dockerfile` — `python:3.12-slim` multi-stage: `base` (copies
+  `pyproject.toml` + `app/`), `dev` (`pip install -e .[dev]`, used by
+  compose), `production` (`pip install .`, runs `uvicorn app.main:app` on
+  `0.0.0.0:8000`, no `--reload` — this is the deployed image).
+- `docker-compose.yml` — one `backend` service, builds `target: dev`,
+  publishes `8000:8000`, loads `.env`, bind-mounts the repo root,
+  overrides the command to add `--reload` for local dev.
 - `.env` / `.env.example` — secrets (`ANTHROPIC_API_KEY`,
   `CLAUDE_CODE_OAUTH_TOKEN`) / committed template.
-- `.devcontainer/devcontainer.json` — reopens VS Code inside the `backend`
-  compose service, forwards port 8000.
 - `app/main.py` — FastAPI entrypoint. Mounts `/static`, includes
   `api_router` under `/api` and `web_router` unprefixed. `GET /health`.
 - `app/config.py` — `Settings(BaseSettings)` from pydantic-settings,
