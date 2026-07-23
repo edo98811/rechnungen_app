@@ -107,7 +107,7 @@ def test_combine_receipts_to_excel_only_includes_selected():
     sheet = workbook.active
     assert sheet is not None
 
-    shop_names = {row[6].value for row in sheet.iter_rows(min_row=2, max_row=5)}
+    shop_names = {str(row[6].value) for row in sheet.iter_rows(min_row=2, max_row=5)}
     assert shop_names == {"Aldi", "Rewe"}
     assert receipt_c.store_name not in shop_names
 

@@ -101,3 +101,43 @@ app/
 - `app/templates/result.html` — extracted receipt view + Excel download
   link.
 - `app/static/styles.css` — minimal reset styling.
+
+## Testing
+
+Run via `docker compose run --rm backend pytest`. Route tests bypass auth
+via FastAPI dependency overrides (see `tests/conftest.py`'s `bypass_auth`
+fixture, applied automatically to everything under `tests/api/` and
+`tests/web/` via their own nested `conftest.py` autouse fixtures) rather
+than re-testing login itself — `tests/test_auth.py` covers login directly
+and would break if auth were bypassed tree-wide, so `bypass_auth` is not
+global-autouse.
+
+- `app/services/session_store.py` — `tests/services/test_session_store.py`.
+  Real SQLite file per test (`tmp_path`-backed, via `settings.database_path`
+  monkeypatch). Covers save/get roundtrip, unknown-id lookup, insertion-order
+  listing, migration idempotency, persistence across a fresh connection.
+- `app/services/excel_export.py` — `tests/services/test_excel_export.py`.
+  Builds fixture `StoredReceipt`s, reopens the generated `.xlsx` bytes with
+  `openpyxl` to assert on actual cell contents. Covers single-receipt export,
+  the pure row-computation function directly, and multi-receipt combining
+  (including that unselected receipts are excluded).
+- `app/services/extraction.py` — `tests/services/test_extraction.py`. Mocks
+  the Anthropic client (`app.services.extraction.client.messages.parse`) —
+  never calls the real Claude API. Covers the success path and the
+  `None`-parsed-output error path.
+- `app/auth.py` — `tests/test_auth.py`. Direct unit tests against
+  `authenticate()`'s branches (correct/wrong password, wrong username, empty
+  hash guard) and a session login/logout roundtrip against a bare fake
+  request object — no HTTP layer needed for these.
+- `app/api/receipts.py` — `tests/api/test_receipts.py`. `TestClient` against
+  the real FastAPI app, auth bypassed via dependency override. Mocks
+  `app.api.receipts.extract_receipt` for the upload test; saves a fixture
+  receipt straight via `session_store.save_receipt` for the export tests
+  (skips re-mocking extraction). Covers upload success, unsupported media
+  type rejection, and export of an unknown/known id (including reopening
+  the response body with `openpyxl` to confirm it's a valid `.xlsx`).
+- `app/web/routes.py` — `tests/web/test_routes.py`. Same `TestClient`
+  approach, auth bypassed. Covers the upload form rendering and the result
+  page rendering real receipt data (mocking `app.web.routes.extract_receipt`)
+  — assertions are light (status code + key content) rather than exact HTML
+  matching, to avoid breaking on cosmetic template changes.

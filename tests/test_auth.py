@@ -1,4 +1,4 @@
-from passlib.hash import pbkdf2_sha256
+from passlib.hash import pbkdf2_sha256  # type: ignore[attr-defined]
 
 from app.auth import authenticate, is_authenticated, login_user, logout_user
 from app.config import settings
@@ -44,8 +44,8 @@ def test_login_logout_session_roundtrip():
 
     fake_request = FakeRequest()
 
-    login_user(fake_request, "alice")
-    assert is_authenticated(fake_request) is True
+    login_user(fake_request, "alice")  # type: ignore[arg-type]
+    assert is_authenticated(fake_request) is True  # type: ignore[arg-type]
 
-    logout_user(fake_request)
-    assert is_authenticated(fake_request) is False
+    logout_user(fake_request)  # type: ignore[arg-type]
+    assert is_authenticated(fake_request) is False  # type: ignore[arg-type]

@@ -8,7 +8,25 @@ os.environ.setdefault("SESSION_SECRET_KEY", "test-secret-key-not-for-production"
 
 import pytest
 
+from app.auth import require_login_api, require_login_web
+from app.main import app
 from app.models.receipt import Receipt, ReceiptItem
+
+
+@pytest.fixture
+def bypass_auth():
+    """Bypass require_login_web / require_login_api via dependency overrides.
+
+    Not autouse here — test_auth.py specifically exercises the real
+    auth-required behavior and must not have it short-circuited. Route
+    tests (tests/api/, tests/web/) opt in automatically via the nested
+    autouse fixtures in their own conftest.py that depend on this one.
+    """
+    app.dependency_overrides[require_login_web] = lambda: None
+    app.dependency_overrides[require_login_api] = lambda: None
+    yield
+    app.dependency_overrides.pop(require_login_web, None)
+    app.dependency_overrides.pop(require_login_api, None)
 
 
 @pytest.fixture
