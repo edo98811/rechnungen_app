@@ -51,28 +51,16 @@ change materially — stale entries here are worse than no entry.
   live-editable inside the devcontainer too, and overrides the container
   command to add `--reload` for local dev only.
 - `.env` — real secrets, gitignored. `.env.example` — template, committed.
-  `ANTHROPIC_API_KEY` (used by the app) and `CLAUDE_CODE_OAUTH_TOKEN` (lets
-  Claude Code inside the devcontainer authenticate automatically via
-  `claude setup-token`, no interactive `/login` needed — confirmed working
-  as long as the container is recreated, not just restarted, after `.env`
-  changes, since `env_file` values are read at container creation).
-- `.gitignore` — standard Python ignores + `.env` + `uploads/`.
+  Currently just `ANTHROPIC_API_KEY`.
+- `.gitignore` — standard Python ignores + `.env` + `uploads/` + `.claude`
+  (only affects untracked files under it — `.claude/settings.json` and
+  `.claude/settings.local.json` stay tracked as before) + `CHANGES.md`
+  (local session notes, not shared history).
 - `.devcontainer/devcontainer.json` — reopens VSCode inside the `backend`
-  compose service, forwards port 8000. Features: `common-utils` (creates a
-  non-root `vscode` user, uid/gid 1000, with passwordless sudo), `node`,
-  `claude-code`. `remoteUser: vscode` — VS Code terminals and lifecycle
-  commands (postCreateCommand/postStartCommand) run as `vscode`, not root;
-  the container's main `uvicorn` process (from the `Dockerfile`/compose
-  `command`) is unaffected and still runs as root. This split exists
-  because Claude Code's `bypassPermissions` mode refuses to run as
-  root/sudo — `postStartCommand` writes
-  `permissions.defaultMode: bypassPermissions` +
-  `skipDangerousModePermissionPrompt: true` to the (non-root) user's own
-  `~/.claude/settings.json` inside the container on every start, so Claude
-  Code doesn't prompt for common actions there. This is container-scoped
-  only — it doesn't touch host-side Claude Code settings.
-  `postCreateCommand` uses `sudo pip install -e .` since the non-root user
-  can't write to the system site-packages directly.
+  compose service, forwards port 8000, `node` feature only. Claude Code is
+  not used from inside this container — develop with it from the host
+  instead, where it isn't running as root and needs no special permission
+  workarounds; the devcontainer is just for running/debugging the app.
 - `.claude/settings.json` — allowlists `docker compose *`, `docker *`,
   `cat *`, `ls *` for this project (no prompts for those).
 

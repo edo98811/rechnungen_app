@@ -4,21 +4,13 @@
   "service": "backend",
   "workspaceFolder": "/app",
   "features": {
-    "ghcr.io/devcontainers/features/common-utils:2": {
-      "username": "vscode",
-      "userUid": "1000",
-      "userGid": "1000"
-    },
-    "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+    "ghcr.io/devcontainers/features/node:1": {}
   },
-  "remoteUser": "vscode",
   "customizations": {
     "vscode": {
       "extensions": ["ms-python.python", "charliermarsh.ruff"]
     }
   },
-  "postCreateCommand": "sudo pip install --no-cache-dir -e .",
-  "postStartCommand": "mkdir -p ~/.claude && python3 -c \"import json, os; p = os.path.expanduser('~/.claude/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d.setdefault('permissions', {})['defaultMode'] = 'bypassPermissions'; d['skipDangerousModePermissionPrompt'] = True; json.dump(d, open(p, 'w'), indent=2)\"",
+  "postCreateCommand": "pip install --no-cache-dir -e .",
   "forwardPorts": [8000]
 }
