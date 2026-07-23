@@ -13,3 +13,7 @@ def save_receipt(receipt: Receipt) -> str:
 
 def get_receipt(receipt_id: str) -> Receipt | None:
     return _receipts.get(receipt_id)
+
+
+def list_receipts() -> list[tuple[str, Receipt]]:
+    return list(_receipts.items())
