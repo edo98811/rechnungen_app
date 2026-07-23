@@ -18,7 +18,6 @@
       "extensions": ["ms-python.python", "charliermarsh.ruff"]
     }
   },
-  "postCreateCommand": "sudo pip install --no-cache-dir -e .",
-  "postStartCommand": "mkdir -p ~/.claude && python3 -c \"import json, os; p = os.path.expanduser('~/.claude/settings.json'); d = json.load(open(p)) if os.path.exists(p) else {}; d.setdefault('permissions', {})['defaultMode'] = 'bypassPermissions'; d['skipDangerousModePermissionPrompt'] = True; json.dump(d, open(p, 'w'), indent=2)\"",
+  "postCreateCommand": "sudo pip install --no-cache-dir -e . && mkdir -p ~/.claude && printf '{\n  \"permissions\": { \"defaultMode\": \"bypassPermissions\" },\n  \"skipDangerousModePermissionPrompt\": true\n}\n' > ~/.claude/settings.json",
   "forwardPorts": [8000]
 }

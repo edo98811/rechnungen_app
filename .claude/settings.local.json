@@ -1,7 +1,27 @@
 {
   "permissions": {
     "allow": [
-      "Bash(claude remote-control *)"
+      "Bash(claude remote-control *)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -F \"file=@/tmp/bad.txt;type=text/plain\" http://localhost:8000/upload)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -F \"file=@/tmp/bad.txt;type=text/plain\" http://localhost:8000/api/receipts/upload)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8000/api/receipts/doesnotexist/export)",
+      "WebFetch(domain:docs.claude.com)",
+      "Bash(devcontainer --version)",
+      "Bash(rm -f /Users/edoardofilippi/Development/recap_scontrini/.devcontainer/devcontainer-lock.json)",
+      "Bash(npm ls *)",
+      "Bash(awk *)",
+      "Skill(update-config)",
+      "Bash(python3 -m json.tool)",
+      "Read(//tmp/**)",
+      "Bash(cd *)",
+      "Edit",
+      "Write",
+      "Bash"
+    ],
+    "ask": [
+      "Bash(git *)"
     ]
   }
 }
