@@ -58,10 +58,8 @@ def test_receipt_to_excel_matches_fixture():
         actual = [cell.value for cell in sheet[row_index]]
         assert tuple(actual) == expected
 
-    grand_total_row_index = 2 + len(expected_rows) + 1
-    grand_total_row = [cell.value for cell in sheet[grand_total_row_index]]
-    assert grand_total_row[0] == "Grand Total"
-    assert grand_total_row[1] == receipt.total
+    # no grand total row — the sheet ends right after the last item row
+    assert sheet.max_row == 1 + len(expected_rows)
 
 
 def test_compute_receipt_rows_single_receipt():
@@ -111,6 +109,5 @@ def test_combine_receipts_to_excel_only_includes_selected():
     assert shop_names == {"Aldi", "Rewe"}
     assert receipt_c.store_name not in shop_names
 
-    grand_total_row = [cell.value for cell in sheet[7]]
-    assert grand_total_row[0] == "Grand Total"
-    assert grand_total_row[1] == receipt_a.total + receipt_b.total
+    # no grand total row — 1 header + 4 item rows (2 receipts x 2 items), nothing after
+    assert sheet.max_row == 5

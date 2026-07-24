@@ -39,7 +39,7 @@ def compute_receipt_rows(receipts: list[StoredReceipt]) -> tuple[list[tuple], fl
 
 
 def _write_workbook(receipts: list[StoredReceipt]) -> bytes:
-    rows, grand_total = compute_receipt_rows(receipts)
+    rows, _grand_total = compute_receipt_rows(receipts)
 
     workbook = Workbook()
     sheet = workbook.active
@@ -54,12 +54,6 @@ def _write_workbook(receipts: list[StoredReceipt]) -> bytes:
         sheet.append(list(row))
         sheet.cell(row=sheet.max_row, column=2).number_format = CURRENCY_FORMAT
         sheet.cell(row=sheet.max_row, column=4).number_format = CURRENCY_FORMAT
-
-    # sheet.append([])
-    # sheet.append(["Grand Total", grand_total])
-    # sheet.cell(row=sheet.max_row, column=2).number_format = CURRENCY_FORMAT
-    for cell in sheet[sheet.max_row]:
-        cell.font = Font(bold=True)
 
     for index, column_cells in enumerate(sheet.columns, start=1):
         lengths = [len(str(cell.value)) for cell in column_cells if cell.value not in (None, "")]
