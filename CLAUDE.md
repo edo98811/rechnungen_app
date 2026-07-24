@@ -10,8 +10,8 @@ user today, SQLite-backed persistence.
 
 - Backend: FastAPI (Python 3.12), single container
 - Frontend: Jinja2 server-rendered templates
-- Extraction: Claude API vision (`messages.parse` + Pydantic `output_format`),
-  `claude-opus-4-8`
+- Extraction: Gemini API vision (`generate_content` + Pydantic
+  `response_schema`), `gemini-2.5-flash`
 - Excel export: openpyxl
 - Dev loop: edit on host, run via `docker compose` (`uvicorn --reload`
   with a live volume mount, no devcontainer). `Dockerfile` has `dev`
@@ -58,7 +58,7 @@ app/
 ## File reference
 
 - `pyproject.toml` — package `receipt-scanner`, Python >=3.12. Deps:
-  fastapi, uvicorn[standard], jinja2, python-multipart, anthropic,
+  fastapi, uvicorn[standard], jinja2, python-multipart, google-genai,
   openpyxl, pydantic-settings.
 - `Dockerfile` — `python:3.12-slim` multi-stage: `base` (copies
   `pyproject.toml` + `app/`), `dev` (`pip install -e .[dev]`, used by
@@ -67,7 +67,7 @@ app/
 - `docker-compose.yml` — one `backend` service, builds `target: dev`,
   publishes `8000:8000`, loads `.env`, bind-mounts the repo root,
   overrides the command to add `--reload` for local dev.
-- `.env` / `.env.example` — secrets (`ANTHROPIC_API_KEY`, `AUTH_USERNAME`,
+- `.env` / `.env.example` — secrets (`GEMINI_API_KEY`, `AUTH_USERNAME`,
   `AUTH_PASSWORD_HASH`, `SESSION_SECRET_KEY`) / committed template.
 - `app/main.py` — FastAPI entrypoint. Mounts `/static`, includes
   `api_router` under `/api` and `web_router` unprefixed. `GET /health`.
@@ -90,7 +90,7 @@ app/
   none resolve; otherwise returns a combined `.xlsx` via
   `combine_receipts_to_excel`) for the "download selected" button.
 - `app/services/extraction.py` — `extract_receipt(image_bytes, media_type)
-  -> Receipt`, the Claude vision extraction call.
+  -> Receipt`, the Gemini vision extraction call.
 - `app/services/excel_export.py` — `receipt_to_excel(receipt) -> bytes`,
   builds an xlsx workbook in memory via openpyxl.
 - `app/services/session_store.py` — SQLite-backed store (raw stdlib
@@ -142,9 +142,9 @@ global-autouse.
   the pure row-computation function directly, and multi-receipt combining
   (including that unselected receipts are excluded).
 - `app/services/extraction.py` — `tests/services/test_extraction.py`. Mocks
-  the Anthropic client (`app.services.extraction.client.messages.parse`) —
-  never calls the real Claude API. Covers the success path and the
-  `None`-parsed-output error path.
+  the Gemini client (`app.services.extraction.client.models.generate_content`)
+  — never calls the real Gemini API. Covers the success path and the
+  no-text-returned error path.
 - `app/auth.py` — `tests/test_auth.py`. Direct unit tests against
   `authenticate()`'s branches (correct/wrong password, wrong username, empty
   hash guard) and a session login/logout roundtrip against a bare fake
