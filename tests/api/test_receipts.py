@@ -6,8 +6,60 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import session_store
+from app.services.excel_export import compute_receipt_rows
 
 client = TestClient(app)
+
+
+def test_list_receipts_returns_saved_receipts(sample_receipt):
+    receipt_id_1 = session_store.save_receipt(sample_receipt)
+    receipt_id_2 = session_store.save_receipt(sample_receipt)
+
+    response = client.get("/api/receipts")
+
+    assert response.status_code == 200
+    body = response.json()
+    ids = {entry["id"] for entry in body}
+    assert ids == {receipt_id_1, receipt_id_2}
+    assert all(
+        entry["receipt"]["store_name"] == sample_receipt.store_name for entry in body
+    )
+
+
+def test_preview_receipts_returns_rows_and_grand_total(sample_receipt):
+    receipt_id_1 = session_store.save_receipt(sample_receipt)
+    receipt_id_2 = session_store.save_receipt(sample_receipt)
+
+    response = client.post(
+        "/api/receipts/preview",
+        json=[receipt_id_1, receipt_id_2],
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+
+    stored = [
+        session_store.get_receipt(receipt_id_1),
+        session_store.get_receipt(receipt_id_2),
+    ]
+    expected_rows, expected_grand_total = compute_receipt_rows(stored)  # type: ignore[arg-type]
+
+    assert len(body["rows"]) == len(expected_rows)
+    assert body["grand_total"] == expected_grand_total
+    assert body["rows"][0][0] == sample_receipt.items[0].name
+
+
+def test_preview_receipts_skips_unknown_ids(sample_receipt):
+    receipt_id = session_store.save_receipt(sample_receipt)
+
+    response = client.post(
+        "/api/receipts/preview",
+        json=[receipt_id, "nonexistent-id"],
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["rows"]) == 1
 
 
 def test_upload_returns_id_and_receipt(sample_receipt):

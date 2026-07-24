@@ -5,9 +5,9 @@ from fastapi.responses import Response
 
 from app.auth import require_login_api
 from app.models.receipt import Receipt
-from app.services.excel_export import receipt_to_excel
+from app.services.excel_export import compute_receipt_rows, receipt_to_excel
 from app.services.extraction import SupportedMediaType, extract_receipt
-from app.services.session_store import get_receipt, save_receipt
+from app.services.session_store import get_receipt, list_receipts, save_receipt
 
 router = APIRouter(tags=["receipts"], dependencies=[Depends(require_login_api)])
 
@@ -15,8 +15,11 @@ SUPPORTED_MEDIA_TYPES: tuple[SupportedMediaType, ...] = get_args(SupportedMediaT
 
 
 @router.get("/receipts")
-def list_receipts():
-    return []
+def list_all_receipts():
+    return [
+        {"id": receipt_id, "receipt": receipt}
+        for receipt_id, receipt in list_receipts()
+    ]
 
 
 @router.post("/receipts/upload")
@@ -47,3 +50,12 @@ def export_receipt(receipt_id: str) -> Response:
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{receipt_id}.xlsx"'},
     )
+
+
+@router.post("/receipts/preview")
+def preview_receipts(ids: list[str]) -> dict:
+    receipts = [
+        receipt for receipt_id in ids if (receipt := get_receipt(receipt_id)) is not None
+    ]
+    rows, grand_total = compute_receipt_rows(receipts)
+    return {"rows": rows, "grand_total": grand_total}

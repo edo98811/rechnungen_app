@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="brand">
+  <span class="brand-icon">🧾</span>
+  <h1>Receipts</h1>
+  <p class="subtitle">Review, preview, and export your scanned receipts.</p>
+</div>
+
+<div class="toolbar">
+  <div class="toolbar-left">
+    <button type="button" id="reload-btn" class="btn btn-ghost">Reload</button>
+  </div>
+  <div class="toolbar-right">
+    <label for="upload-input" class="btn btn-primary upload-label">
+      Upload new receipt
+      <input type="file" id="upload-input" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+    </label>
+    <span id="upload-status" class="upload-status"></span>
+  </div>
+</div>
+
+<form action="/receipts/export" method="post" id="export-form">
+  <div class="table-wrap">
+    <table id="receipt-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Date</th>
+          <th>Shop</th>
+        </tr>
+      </thead>
+      <tbody id="receipt-rows">
+      </tbody>
+    </table>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span id="selected-count" class="selected-count">0 selected</span>
+    </div>
+    <div class="toolbar-right">
+      <button type="submit" class="btn btn-primary">Download selected</button>
+    </div>
+  </div>
+</form>
+
+<h2 class="preview-heading">Preview</h2>
+<div id="preview-panel" class="preview-panel"></div>
+
+<script src="/static/app.js" defer></script>
+{% endblock %}

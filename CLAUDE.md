@@ -49,10 +49,10 @@ app/
     receipt.py
   templates/
     base.html
-    index.html
-    result.html
+    receipts_list.html
   static/
     styles.css
+    app.js
 ```
 
 ## File reference
@@ -75,12 +75,20 @@ app/
   reads `.env`. Module-level singleton `settings`. Includes
   `database_path` (default `data/receipts.db`, env override
   `DATABASE_PATH`) for the SQLite store.
-- `app/api/receipts.py` — JSON API router. `GET /receipts` (stub `[]`),
+- `app/api/receipts.py` — JSON API router. `GET /receipts` (real data via
+  `session_store.list_receipts`, as `[{"id", "receipt"}, ...]`),
   `POST /receipts/upload` (extract + store, returns id + receipt),
-  `GET /receipts/{id}/export` (returns `.xlsx` bytes).
-- `app/web/routes.py` — Jinja2 HTML router. `GET /` renders the upload
-  form, `POST /upload` runs the same extraction flow and renders the
-  result page.
+  `GET /receipts/{id}/export` (returns `.xlsx` bytes for one receipt),
+  `POST /receipts/preview` (JSON body: array of receipt ids; loads each
+  via `get_receipt`, skipping unknown ids; returns
+  `{"rows": [...], "grand_total": ...}` via `compute_receipt_rows`, for
+  the dashboard's live preview panel).
+- `app/web/routes.py` — Jinja2 HTML router. `GET /` renders the dashboard
+  shell (`receipts_list.html`, static — no receipt data passed in, JS
+  fetches it). `POST /receipts/export` (form field `receipt_ids`, one or
+  more ids; loads each via `get_receipt`, skipping unknown ids; 400 if
+  none resolve; otherwise returns a combined `.xlsx` via
+  `combine_receipts_to_excel`) for the "download selected" button.
 - `app/services/extraction.py` — `extract_receipt(image_bytes, media_type)
   -> Receipt`, the Claude vision extraction call.
 - `app/services/excel_export.py` — `receipt_to_excel(receipt) -> bytes`,
@@ -97,10 +105,22 @@ app/
   creating the parent directory if needed.
 - `app/models/receipt.py` — Pydantic shapes: `ReceiptItem`, `Receipt`.
 - `app/templates/base.html` — base layout, `{% block content %}`.
-- `app/templates/index.html` — upload form.
-- `app/templates/result.html` — extracted receipt view + Excel download
-  link.
-- `app/static/styles.css` — minimal reset styling.
+- `app/templates/receipts_list.html` — dashboard shell (post-login `GET /`):
+  static markup only, no Jinja loop over receipt data. Receipt table
+  (`#receipt-rows` tbody, checkbox/date/shop columns) wrapped in the
+  `#export-form` `<form action="/receipts/export" method="post">` so
+  "download selected" works via plain browser form submission; reload
+  button, upload file input + status span, "N selected" counter, and the
+  `#preview-panel` container — all populated/driven by `app.js`.
+- `app/static/styles.css` — minimal reset styling; also carries the
+  dashboard's toolbar/upload-status/preview-panel styles.
+- `app/static/app.js` — vanilla JS (no libraries/build step) driving the
+  dashboard: `refreshList()` (GET `/api/receipts` → `renderList`),
+  `uploadReceipt()` (POST `/api/receipts/upload`, updates `#upload-status`,
+  then reloads the list), checkbox change handlers maintaining the
+  `selectedIds` Set + `#selected-count`, and a debounced `updatePreview()`
+  (POST `/api/receipts/preview` with the selected ids, renders the
+  returned rows/grand_total into `#preview-panel`).
 
 ## Testing
 
@@ -131,13 +151,19 @@ global-autouse.
   request object — no HTTP layer needed for these.
 - `app/api/receipts.py` — `tests/api/test_receipts.py`. `TestClient` against
   the real FastAPI app, auth bypassed via dependency override. Mocks
-  `app.api.receipts.extract_receipt` for the upload test; saves a fixture
-  receipt straight via `session_store.save_receipt` for the export tests
-  (skips re-mocking extraction). Covers upload success, unsupported media
-  type rejection, and export of an unknown/known id (including reopening
-  the response body with `openpyxl` to confirm it's a valid `.xlsx`).
+  `app.api.receipts.extract_receipt` for the upload test; saves fixture
+  receipts straight via `session_store.save_receipt` for the export/list/
+  preview tests (skips re-mocking extraction). Covers upload success,
+  unsupported media type rejection, export of an unknown/known id
+  (including reopening the response body with `openpyxl` to confirm it's a
+  valid `.xlsx`), `GET /receipts` returning real saved receipts, and
+  `POST /receipts/preview` returning rows/grand_total matching
+  `compute_receipt_rows` directly (plus that unknown ids in the request are
+  skipped rather than erroring).
 - `app/web/routes.py` — `tests/web/test_routes.py`. Same `TestClient`
-  approach, auth bypassed. Covers the upload form rendering and the result
-  page rendering real receipt data (mocking `app.web.routes.extract_receipt`)
-  — assertions are light (status code + key content) rather than exact HTML
-  matching, to avoid breaking on cosmetic template changes.
+  approach, auth bypassed. Covers the dashboard shell rendering at `GET /`
+  (light assertion — the reload button's id — rather than exact HTML
+  matching, to avoid breaking on cosmetic template changes) and
+  `POST /receipts/export`: a valid combined `.xlsx` containing only the
+  selected receipts' rows (reopened with `openpyxl`), and a 400 when no
+  receipt ids are selected.

@@ -280,6 +280,67 @@ tbody tr:nth-child(even) {
   border-color: var(--primary);
 }
 
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toolbar .btn {
+  width: auto;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+}
+
+.upload-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.upload-status {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  min-height: 1.2em;
+}
+
+#receipt-table th:first-child,
+#receipt-table td:first-child {
+  width: 2.5rem;
+  text-align: center;
+}
+
+.selected-count {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.preview-heading {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  text-align: left;
+}
+
+.preview-panel {
+  text-align: left;
+}
+
+.preview-panel:empty::before {
+  content: "Select receipts above to preview their line items.";
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .error-message {
   color: #dc2626;
   background: color-mix(in srgb, #dc2626 10%, transparent);
