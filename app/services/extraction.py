@@ -22,7 +22,7 @@ def extract_receipt(image_bytes: bytes, media_type: SupportedMediaType) -> Recei
         raise ValueError("GEMINI_API_KEY is not configured (see .env.example)")
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-flash-latest",
         contents=[
             types.Part.from_bytes(data=image_bytes, mime_type=media_type),
             EXTRACTION_PROMPT,
