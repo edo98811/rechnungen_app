@@ -11,7 +11,7 @@ user today, SQLite-backed persistence.
 - Backend: FastAPI (Python 3.12), single container
 - Frontend: Jinja2 server-rendered templates
 - Extraction: Gemini API vision (`generate_content` + Pydantic
-  `response_schema`), `gemini-2.5-flash`
+  `response_schema`), `gemini-flash-latest`
 - Excel export: openpyxl
 - Dev loop: edit on host, run via `docker compose` (`uvicorn --reload`
   with a live volume mount, no devcontainer). `Dockerfile` has `dev`
@@ -20,12 +20,22 @@ user today, SQLite-backed persistence.
 
 ## Next steps
 
-- Authentication — start with a single user, but build the model so more
-  users can be added later (not full self-service signup, just
-  multi-user-capable from the start).
+- Authentication — done: single user via `.env` credentials
+  (`app/auth.py`), structured so a users table is a drop-in swap later
+  for real multi-user support.
 - Persistence — done: `session_store.py` is now SQLite-backed (see file
   reference below) so receipts survive restarts and are no longer
   per-process.
+- Delete receipts — needs planning before implementation. Add a "Delete
+  selected" button to the dashboard (`app/templates/receipts_list.html`
+  + `app/static/app.js`) alongside "Download selected", plus a delete
+  endpoint (single vs. bulk shape TBD) and a new `delete_receipt`
+  function in `app/services/session_store.py` (doesn't exist yet — only
+  `save_receipt`/`get_receipt`/`list_receipts` exist today). Open
+  questions: confirmation dialog before deleting, how the dashboard's
+  `allReceipts`/`selectedIds` update after a delete (local removal vs.
+  `refreshList()`), and hard-delete vs. soft-delete (a `deleted_at`
+  column) for recoverability.
 
 ## File structure
 
