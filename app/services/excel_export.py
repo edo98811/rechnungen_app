@@ -55,9 +55,9 @@ def _write_workbook(receipts: list[StoredReceipt]) -> bytes:
         sheet.cell(row=sheet.max_row, column=2).number_format = CURRENCY_FORMAT
         sheet.cell(row=sheet.max_row, column=4).number_format = CURRENCY_FORMAT
 
-    sheet.append([])
-    sheet.append(["Grand Total", grand_total])
-    sheet.cell(row=sheet.max_row, column=2).number_format = CURRENCY_FORMAT
+    # sheet.append([])
+    # sheet.append(["Grand Total", grand_total])
+    # sheet.cell(row=sheet.max_row, column=2).number_format = CURRENCY_FORMAT
     for cell in sheet[sheet.max_row]:
         cell.font = Font(bold=True)
 
