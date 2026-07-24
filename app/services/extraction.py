@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 
 from google import genai
@@ -36,4 +37,11 @@ def extract_receipt(image_bytes: bytes, media_type: SupportedMediaType) -> Recei
     if response.text is None:
         raise ValueError("Gemini did not return a parsed receipt")
 
-    return Receipt.model_validate_json(response.text)
+    receipt = Receipt.model_validate_json(response.text)
+
+    try:
+        date.fromisoformat(receipt.date)
+    except ValueError:
+        receipt.date = date.today().isoformat()
+
+    return receipt
