@@ -32,7 +32,10 @@ async def upload_receipt(file: UploadFile) -> dict[str, str | Receipt]:
 
     image_bytes = await file.read()
     media_type = cast(SupportedMediaType, file.content_type)
-    receipt = extract_receipt(image_bytes, media_type)
+    try:
+        receipt = extract_receipt(image_bytes, media_type)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     receipt_id = save_receipt(receipt)
 
     return {"id": receipt_id, "receipt": receipt}
