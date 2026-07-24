@@ -173,6 +173,16 @@ h1 {
   border-color: var(--text-muted);
 }
 
+.btn-danger {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid color-mix(in srgb, #dc2626 30%, transparent);
+}
+
+.btn-danger:hover {
+  background: color-mix(in srgb, #dc2626 10%, transparent);
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);

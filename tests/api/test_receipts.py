@@ -62,6 +62,21 @@ def test_preview_receipts_skips_unknown_ids(sample_receipt):
     assert len(body["rows"]) == 1
 
 
+def test_delete_receipts_removes_only_given_ids(sample_receipt):
+    receipt_id_1 = session_store.save_receipt(sample_receipt)
+    receipt_id_2 = session_store.save_receipt(sample_receipt)
+
+    response = client.post(
+        "/api/receipts/delete",
+        json=[receipt_id_1, "nonexistent-id"],
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted": [receipt_id_1]}
+    assert session_store.get_receipt(receipt_id_1) is None
+    assert session_store.get_receipt(receipt_id_2) is not None
+
+
 def test_upload_returns_id_and_receipt(sample_receipt):
     with patch(
         "app.api.receipts.extract_receipt", return_value=sample_receipt

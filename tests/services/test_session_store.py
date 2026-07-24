@@ -52,6 +52,28 @@ def test_list_receipts_returns_all_saved():
     assert [r.store_name for _, r in all_receipts] == ["REWE", "Aldi", "Lidl"]
 
 
+def test_delete_receipt_removes_receipt_and_items():
+    receipt_id = session_store.save_receipt(_make_receipt())
+
+    deleted = session_store.delete_receipt(receipt_id)
+
+    assert deleted is True
+    assert session_store.get_receipt(receipt_id) is None
+
+    conn = session_store._get_connection()
+    try:
+        item_count = conn.execute(
+            "SELECT COUNT(*) FROM receipt_items WHERE receipt_id = ?", (receipt_id,)
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    assert item_count == 0
+
+
+def test_delete_receipt_unknown_id_returns_false():
+    assert session_store.delete_receipt("nonexistent") is False
+
+
 def test_migration_idempotent_on_reopen():
     conn1 = session_store._get_connection()
     conn1.close()

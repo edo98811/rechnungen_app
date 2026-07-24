@@ -7,7 +7,12 @@ from app.auth import require_login_api
 from app.models.receipt import Receipt
 from app.services.excel_export import compute_receipt_rows, receipt_to_excel
 from app.services.extraction import SupportedMediaType, extract_receipt
-from app.services.session_store import get_receipt, list_receipts, save_receipt
+from app.services.session_store import (
+    delete_receipt,
+    get_receipt,
+    list_receipts,
+    save_receipt,
+)
 
 router = APIRouter(tags=["receipts"], dependencies=[Depends(require_login_api)])
 
@@ -53,6 +58,12 @@ def export_receipt(receipt_id: str) -> Response:
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{receipt_id}.xlsx"'},
     )
+
+
+@router.post("/receipts/delete")
+def delete_receipts(ids: list[str]) -> dict:
+    deleted = [receipt_id for receipt_id in ids if delete_receipt(receipt_id)]
+    return {"deleted": deleted}
 
 
 @router.post("/receipts/preview")

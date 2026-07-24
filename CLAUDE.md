@@ -26,16 +26,9 @@ user today, SQLite-backed persistence.
 - Persistence — done: `session_store.py` is now SQLite-backed (see file
   reference below) so receipts survive restarts and are no longer
   per-process.
-- Delete receipts — needs planning before implementation. Add a "Delete
-  selected" button to the dashboard (`app/templates/receipts_list.html`
-  + `app/static/app.js`) alongside "Download selected", plus a delete
-  endpoint (single vs. bulk shape TBD) and a new `delete_receipt`
-  function in `app/services/session_store.py` (doesn't exist yet — only
-  `save_receipt`/`get_receipt`/`list_receipts` exist today). Open
-  questions: confirmation dialog before deleting, how the dashboard's
-  `allReceipts`/`selectedIds` update after a delete (local removal vs.
-  `refreshList()`), and hard-delete vs. soft-delete (a `deleted_at`
-  column) for recoverability.
+- Delete receipts — done: "Delete selected" button on the dashboard,
+  `POST /api/receipts/delete`, `session_store.delete_receipt`. Hard
+  delete (no `deleted_at`/undo).
 
 ## File structure
 
@@ -89,10 +82,12 @@ app/
   `session_store.list_receipts`, as `[{"id", "receipt"}, ...]`),
   `POST /receipts/upload` (extract + store, returns id + receipt),
   `GET /receipts/{id}/export` (returns `.xlsx` bytes for one receipt),
-  `POST /receipts/preview` (JSON body: array of receipt ids; loads each
-  via `get_receipt`, skipping unknown ids; returns
-  `{"rows": [...], "grand_total": ...}` via `compute_receipt_rows`, for
-  the dashboard's live preview panel).
+  `POST /receipts/delete` (JSON body: array of receipt ids; deletes each
+  via `session_store.delete_receipt`, returns `{"deleted": [...]}` —
+  only the ids that actually existed), `POST /receipts/preview` (JSON
+  body: array of receipt ids; loads each via `get_receipt`, skipping
+  unknown ids; returns `{"rows": [...], "grand_total": ...}` via
+  `compute_receipt_rows`, for the dashboard's live preview panel).
 - `app/web/routes.py` — Jinja2 HTML router. `GET /` renders the dashboard
   shell (`receipts_list.html`, static — no receipt data passed in, JS
   fetches it). `POST /receipts/export` (form field `receipt_ids`, one or
@@ -108,7 +103,10 @@ app/
   (one row per line item, so per-item queries stay plain SQL). Schema
   migrations are plain SQL scripts tracked via `PRAGMA user_version`
   (see `_MIGRATIONS`), not Alembic. `save_receipt` / `get_receipt` /
-  `list_receipts` keep their existing call shapes; `get_receipt` and
+  `list_receipts` / `delete_receipt` (hard delete — removes the
+  `receipts` row and its `receipt_items` rows in one transaction, no
+  `ON DELETE CASCADE` since SQLite FK enforcement isn't turned on) keep
+  their existing call shapes; `get_receipt` and
   `list_receipts` now return `StoredReceipt` (tagged `user_id`,
   currently always `"default"` — no `users` table yet). Reads
   `settings.database_path` fresh on every call (no cached connection),
@@ -128,9 +126,11 @@ app/
   dashboard: `refreshList()` (GET `/api/receipts` → `renderList`),
   `uploadReceipt()` (POST `/api/receipts/upload`, updates `#upload-status`,
   then reloads the list), checkbox change handlers maintaining the
-  `selectedIds` Set + `#selected-count`, and a debounced `updatePreview()`
+  `selectedIds` Set + `#selected-count`, a debounced `updatePreview()`
   (POST `/api/receipts/preview` with the selected ids, renders the
-  returned rows/grand_total into `#preview-panel`).
+  returned rows/grand_total into `#preview-panel`), and `deleteSelected()`
+  (native `confirm()` dialog, then POST `/api/receipts/delete`, clears
+  `selectedIds`/the preview panel, reloads the list).
 
 ## Testing
 
@@ -145,7 +145,10 @@ global-autouse.
 - `app/services/session_store.py` — `tests/services/test_session_store.py`.
   Real SQLite file per test (`tmp_path`-backed, via `settings.database_path`
   monkeypatch). Covers save/get roundtrip, unknown-id lookup, insertion-order
-  listing, migration idempotency, persistence across a fresh connection.
+  listing, migration idempotency, persistence across a fresh connection,
+  and `delete_receipt` removing both the `receipts` row and its
+  `receipt_items` rows (checked directly via SQL, not just `get_receipt`)
+  plus returning `False` for an unknown id.
 - `app/services/excel_export.py` — `tests/services/test_excel_export.py`.
   Builds fixture `StoredReceipt`s, reopens the generated `.xlsx` bytes with
   `openpyxl` to assert on actual cell contents. Covers single-receipt export,
@@ -166,10 +169,12 @@ global-autouse.
   preview tests (skips re-mocking extraction). Covers upload success,
   unsupported media type rejection, export of an unknown/known id
   (including reopening the response body with `openpyxl` to confirm it's a
-  valid `.xlsx`), `GET /receipts` returning real saved receipts, and
+  valid `.xlsx`), `GET /receipts` returning real saved receipts,
   `POST /receipts/preview` returning rows/grand_total matching
   `compute_receipt_rows` directly (plus that unknown ids in the request are
-  skipped rather than erroring).
+  skipped rather than erroring), and `POST /receipts/delete` removing only
+  the given ids that actually exist (a mix of a real + unknown id in one
+  request).
 - `app/web/routes.py` — `tests/web/test_routes.py`. Same `TestClient`
   approach, auth bypassed. Covers the dashboard shell rendering at `GET /`
   (light assertion — the reload button's id — rather than exact HTML

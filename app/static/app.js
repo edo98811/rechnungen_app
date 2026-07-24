@@ -150,9 +150,34 @@ function updateSelectedCount() {
     `${selectedIds.size} selected`;
 }
 
+function deleteSelected() {
+  if (selectedIds.size === 0) {
+    return;
+  }
+  if (!confirm(`Delete ${selectedIds.size} receipt(s)? This cannot be undone.`)) {
+    return;
+  }
+
+  fetch("/api/receipts/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify([...selectedIds]),
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error("Delete failed");
+    }
+    selectedIds.clear();
+    updateSelectedCount();
+    document.getElementById("preview-panel").innerHTML = "";
+    refreshList();
+  });
+}
+
 refreshList();
 
 document.getElementById("reload-btn").addEventListener("click", refreshList);
+
+document.getElementById("delete-btn").addEventListener("click", deleteSelected);
 
 document.getElementById("upload-input").addEventListener("change", (event) => {
   const file = event.target.files[0];

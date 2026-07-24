@@ -145,6 +145,21 @@ def get_receipt(receipt_id: str) -> StoredReceipt | None:
     )
 
 
+def delete_receipt(receipt_id: str) -> bool:
+    conn = _get_connection()
+    try:
+        with conn:
+            conn.execute(
+                "DELETE FROM receipt_items WHERE receipt_id = ?", (receipt_id,)
+            )
+            cursor = conn.execute(
+                "DELETE FROM receipts WHERE id = ?", (receipt_id,)
+            )
+            return cursor.rowcount > 0
+    finally:
+        conn.close()
+
+
 def list_receipts() -> list[tuple[str, StoredReceipt]]:
     conn = _get_connection()
     try:
