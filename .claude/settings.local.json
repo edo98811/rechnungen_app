@@ -18,7 +18,8 @@
       "Bash(cd *)",
       "Edit",
       "Write",
-      "Bash"
+      "Bash",
+      "Bash(rm /Users/edoardofilippi/Development/recap_scontrini/.env /tmp/cookies.txt)"
     ],
     "ask": [
       "Bash(git *)"
