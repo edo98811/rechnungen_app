@@ -1,0 +1,15 @@
+name: recap_scontrini_prod_test
+
+services:
+  backend:
+    build:
+      context: .
+      target: production
+    ports:
+      - "8001:8000"
+    env_file: .env
+    volumes:
+      - prod-data:/app/data
+
+volumes:
+  prod-data:
