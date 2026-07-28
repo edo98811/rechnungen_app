@@ -20,10 +20,10 @@ SUPPORTED_MEDIA_TYPES: tuple[SupportedMediaType, ...] = get_args(SupportedMediaT
 
 
 @router.get("/receipts")
-def list_all_receipts():
+def list_all_receipts(date_from: str | None = None, date_to: str | None = None):
     return [
         {"id": receipt_id, "receipt": receipt}
-        for receipt_id, receipt in list_receipts()
+        for receipt_id, receipt in list_receipts(date_from, date_to)
     ]
 
 

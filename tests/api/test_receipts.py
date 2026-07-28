@@ -26,6 +26,21 @@ def test_list_receipts_returns_saved_receipts(sample_receipt):
     )
 
 
+def test_list_receipts_filters_by_date_range(sample_receipt):
+    in_range = sample_receipt.model_copy(update={"date": "2026-07-23"})
+    out_of_range = sample_receipt.model_copy(update={"date": "2026-01-01"})
+    id_in = session_store.save_receipt(in_range)
+    session_store.save_receipt(out_of_range)
+
+    response = client.get(
+        "/api/receipts", params={"date_from": "2026-07-01", "date_to": "2026-07-31"}
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [entry["id"] for entry in body] == [id_in]
+
+
 def test_preview_receipts_returns_rows_and_grand_total(sample_receipt):
     receipt_id_1 = session_store.save_receipt(sample_receipt)
     receipt_id_2 = session_store.save_receipt(sample_receipt)

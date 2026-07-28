@@ -41,7 +41,18 @@ function renderList(receipts) {
 }
 
 function refreshList() {
-  fetch("/api/receipts")
+  const dateFrom = document.getElementById("filter-date-from").value;
+  const dateTo = document.getElementById("filter-date-to").value;
+  const params = new URLSearchParams();
+  if (dateFrom) {
+    params.set("date_from", dateFrom);
+  }
+  if (dateTo) {
+    params.set("date_to", dateTo);
+  }
+  const query = params.toString();
+
+  fetch(`/api/receipts${query ? `?${query}` : ""}`)
     .then((response) => response.json())
     .then((data) => {
       allReceipts = data;
@@ -178,6 +189,9 @@ refreshList();
 document.getElementById("reload-btn").addEventListener("click", refreshList);
 
 document.getElementById("delete-btn").addEventListener("click", deleteSelected);
+
+document.getElementById("filter-date-from").addEventListener("change", refreshList);
+document.getElementById("filter-date-to").addEventListener("change", refreshList);
 
 document.getElementById("upload-input").addEventListener("change", (event) => {
   const file = event.target.files[0];

@@ -160,16 +160,25 @@ def delete_receipt(receipt_id: str) -> bool:
         conn.close()
 
 
-def list_receipts() -> list[tuple[str, StoredReceipt]]:
+def list_receipts(
+    date_from: str | None = None, date_to: str | None = None
+) -> list[tuple[str, StoredReceipt]]:
     conn = _get_connection()
     try:
-        rows = conn.execute(
-            """
-            SELECT id, store_name, date, subtotal, tax_amount, total, user_id
-            FROM receipts
-            ORDER BY rowid
-            """
-        ).fetchall()
+        query = "SELECT id, store_name, date, subtotal, tax_amount, total, user_id FROM receipts"
+        conditions = []
+        params: list[str] = []
+        if date_from is not None:
+            conditions.append("date >= ?")
+            params.append(date_from)
+        if date_to is not None:
+            conditions.append("date <= ?")
+            params.append(date_to)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY rowid"
+
+        rows = conn.execute(query, params).fetchall()
 
         results: list[tuple[str, StoredReceipt]] = []
         for receipt_id, store_name, date, subtotal, tax_amount, total, user_id in rows:

@@ -2,10 +2,10 @@ from app.models.receipt import Receipt, ReceiptItem
 from app.services import session_store
 
 
-def _make_receipt(store_name: str = "REWE") -> Receipt:
+def _make_receipt(store_name: str = "REWE", date: str = "2026-07-01") -> Receipt:
     return Receipt(
         store_name=store_name,
-        date="2026-07-01",
+        date=date,
         items=[
             ReceiptItem(name="Milch", quantity=2, unit_price=1.19, total_price=2.38),
             ReceiptItem(name="Brot", quantity=1, unit_price=2.49, total_price=2.49),
@@ -50,6 +50,36 @@ def test_list_receipts_returns_all_saved():
 
     assert [rid for rid, _ in all_receipts] == [id1, id2, id3]
     assert [r.store_name for _, r in all_receipts] == ["REWE", "Aldi", "Lidl"]
+
+
+def test_list_receipts_filters_by_date_range():
+    id_jan = session_store.save_receipt(_make_receipt("REWE", "2026-01-15"))
+    id_mar = session_store.save_receipt(_make_receipt("Aldi", "2026-03-15"))
+    id_jun = session_store.save_receipt(_make_receipt("Lidl", "2026-06-15"))
+
+    results = session_store.list_receipts(date_from="2026-02-01", date_to="2026-04-01")
+
+    assert [rid for rid, _ in results] == [id_mar]
+    assert id_jan not in [rid for rid, _ in results]
+    assert id_jun not in [rid for rid, _ in results]
+
+
+def test_list_receipts_filter_boundaries_are_inclusive():
+    receipt_id = session_store.save_receipt(_make_receipt("REWE", "2026-03-15"))
+
+    results = session_store.list_receipts(date_from="2026-03-15", date_to="2026-03-15")
+
+    assert [rid for rid, _ in results] == [receipt_id]
+
+
+def test_list_receipts_with_only_date_from():
+    id_jan = session_store.save_receipt(_make_receipt("REWE", "2026-01-15"))
+    id_mar = session_store.save_receipt(_make_receipt("Aldi", "2026-03-15"))
+
+    results = session_store.list_receipts(date_from="2026-02-01")
+
+    assert [rid for rid, _ in results] == [id_mar]
+    assert id_jan not in [rid for rid, _ in results]
 
 
 def test_delete_receipt_removes_receipt_and_items():
