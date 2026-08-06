@@ -1,0 +1,14 @@
+name: rechnungen
+
+services:
+  backend:
+    image: ghcr.io/edo98811/rechnungen:latest
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - data:/app/data
+
+volumes:
+  data:
