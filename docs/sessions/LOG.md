@@ -1,0 +1,1 @@
+- 2026-08-06 [Update the login password on the Raspberry Pi deployment](2026-08-06-fix-pi-service-name.md) — found the Pi's real compose service name (`rechnungen`, not `backend`) and the correct password-rotation commands.
