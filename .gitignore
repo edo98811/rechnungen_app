@@ -11,3 +11,6 @@ CHANGES.md
 *.db
 *.db-journal
 data/
+docs/flutter_client.md
+CLAUDE.md
+docs/

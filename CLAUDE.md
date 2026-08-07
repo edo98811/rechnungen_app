@@ -29,6 +29,21 @@ user today, SQLite-backed persistence.
 - Delete receipts — done: "Delete selected" button on the dashboard,
   `POST /api/receipts/delete`, `session_store.delete_receipt`. Hard
   delete (no `deleted_at`/undo).
+- Filter receipts by date — done: native `<input type="date">` From/To
+  fields in the dashboard toolbar; `GET /api/receipts` accepts
+  `date_from`/`date_to` query params, filtered in SQL by
+  `session_store.list_receipts`.
+- API token auth — done: `Authorization: Bearer <API_TOKEN>` accepted
+  as an alternative to the session cookie on API routes (see
+  `require_login_api` in `app/auth.py`), for non-browser clients (e.g. a
+  future mobile app) that can't hold a cookie jar. Static single-user
+  token from `.env`, not per-user/revocable — fine while there's one
+  user, would need a real tokens table once multi-user auth exists.
+- Multi-user accounts — not started. `receipts.user_id` is already
+  threaded through every query but hardcoded to `"default"`; the
+  intended swap is a `users` table plus `authenticate()` doing a real
+  lookup instead of comparing to `.env` values, and API tokens becoming
+  per-user rows instead of one shared secret.
 
 ## File structure
 
@@ -71,15 +86,25 @@ app/
   publishes `8000:8000`, loads `.env`, bind-mounts the repo root,
   overrides the command to add `--reload` for local dev.
 - `.env` / `.env.example` — secrets (`GEMINI_API_KEY`, `AUTH_USERNAME`,
-  `AUTH_PASSWORD_HASH`, `SESSION_SECRET_KEY`) / committed template.
+  `AUTH_PASSWORD_HASH`, `SESSION_SECRET_KEY`, `API_TOKEN`) / committed
+  template.
 - `app/main.py` — FastAPI entrypoint. Mounts `/static`, includes
   `api_router` under `/api` and `web_router` unprefixed. `GET /health`.
 - `app/config.py` — `Settings(BaseSettings)` from pydantic-settings,
   reads `.env`. Module-level singleton `settings`. Includes
   `database_path` (default `data/receipts.db`, env override
-  `DATABASE_PATH`) for the SQLite store.
+  `DATABASE_PATH`) for the SQLite store, and `api_token` (empty by
+  default, disabling bearer-token auth until set).
+- `app/auth.py` — session-cookie login (`authenticate`, `login_user`,
+  `logout_user`, `is_authenticated`) plus the two route guards,
+  `require_login_web` (redirects to `/login`) and `require_login_api`
+  (401s), the latter now also accepting `Authorization: Bearer
+  <API_TOKEN>` as an alternative to the session cookie (checked via
+  `hmac.compare_digest` against `settings.api_token`, same pattern as
+  the username check).
 - `app/api/receipts.py` — JSON API router. `GET /receipts` (real data via
-  `session_store.list_receipts`, as `[{"id", "receipt"}, ...]`),
+  `session_store.list_receipts`, as `[{"id", "receipt"}, ...]`, optional
+  `date_from`/`date_to` query params to filter by receipt date),
   `POST /receipts/upload` (extract + store, returns id + receipt),
   `GET /receipts/{id}/export` (returns `.xlsx` bytes for one receipt),
   `POST /receipts/delete` (JSON body: array of receipt ids; deletes each
@@ -108,7 +133,9 @@ app/
   `ON DELETE CASCADE` since SQLite FK enforcement isn't turned on) keep
   their existing call shapes; `get_receipt` and
   `list_receipts` now return `StoredReceipt` (tagged `user_id`,
-  currently always `"default"` — no `users` table yet). Reads
+  currently always `"default"` — no `users` table yet). `list_receipts`
+  takes optional `date_from`/`date_to` (inclusive `YYYY-MM-DD` strings),
+  applied as a SQL `WHERE date >= ? AND date <= ?` clause. Reads
   `settings.database_path` fresh on every call (no cached connection),
   creating the parent directory if needed.
 - `app/models/receipt.py` — Pydantic shapes: `ReceiptItem`, `Receipt`.
@@ -118,12 +145,15 @@ app/
   (`#receipt-rows` tbody, checkbox/date/shop columns) wrapped in the
   `#export-form` `<form action="/receipts/export" method="post">` so
   "download selected" works via plain browser form submission; reload
-  button, upload file input + status span, "N selected" counter, and the
+  button, `#filter-date-from`/`#filter-date-to` native date inputs,
+  upload file input + status span, "N selected" counter, and the
   `#preview-panel` container — all populated/driven by `app.js`.
 - `app/static/styles.css` — minimal reset styling; also carries the
   dashboard's toolbar/upload-status/preview-panel styles.
 - `app/static/app.js` — vanilla JS (no libraries/build step) driving the
-  dashboard: `refreshList()` (GET `/api/receipts` → `renderList`),
+  dashboard: `refreshList()` (GET `/api/receipts`, appending
+  `date_from`/`date_to` query params from the filter inputs when set →
+  `renderList`; also triggered on `change` of either filter input),
   `uploadReceipt()` (POST `/api/receipts/upload`, updates `#upload-status`,
   then reloads the list), checkbox change handlers maintaining the
   `selectedIds` Set + `#selected-count`, a debounced `updatePreview()`
@@ -145,10 +175,11 @@ global-autouse.
 - `app/services/session_store.py` — `tests/services/test_session_store.py`.
   Real SQLite file per test (`tmp_path`-backed, via `settings.database_path`
   monkeypatch). Covers save/get roundtrip, unknown-id lookup, insertion-order
-  listing, migration idempotency, persistence across a fresh connection,
-  and `delete_receipt` removing both the `receipts` row and its
-  `receipt_items` rows (checked directly via SQL, not just `get_receipt`)
-  plus returning `False` for an unknown id.
+  listing, `list_receipts` date-range filtering (both bounds, inclusive
+  boundaries, and a one-sided `date_from` only), migration idempotency,
+  persistence across a fresh connection, and `delete_receipt` removing both
+  the `receipts` row and its `receipt_items` rows (checked directly via SQL,
+  not just `get_receipt`) plus returning `False` for an unknown id.
 - `app/services/excel_export.py` — `tests/services/test_excel_export.py`.
   Builds fixture `StoredReceipt`s, reopens the generated `.xlsx` bytes with
   `openpyxl` to assert on actual cell contents. Covers single-receipt export,
@@ -160,8 +191,14 @@ global-autouse.
   no-text-returned error path.
 - `app/auth.py` — `tests/test_auth.py`. Direct unit tests against
   `authenticate()`'s branches (correct/wrong password, wrong username, empty
-  hash guard) and a session login/logout roundtrip against a bare fake
-  request object — no HTTP layer needed for these.
+  hash guard), a session login/logout roundtrip against a bare fake
+  request object, `require_login_api`'s bearer-token branch (valid token,
+  wrong token, no token configured, session-only request with a token
+  configured but not sent) against a bare fake request, and two
+  `TestClient`-level checks that `GET /api/receipts` actually enforces it
+  (401 with no `Authorization` header, 200 with a correct one) — no HTTP
+  layer needed for the fake-request cases, real HTTP for the end-to-end
+  ones.
 - `app/api/receipts.py` — `tests/api/test_receipts.py`. `TestClient` against
   the real FastAPI app, auth bypassed via dependency override. Mocks
   `app.api.receipts.extract_receipt` for the upload test; saves fixture
@@ -169,7 +206,8 @@ global-autouse.
   preview tests (skips re-mocking extraction). Covers upload success,
   unsupported media type rejection, export of an unknown/known id
   (including reopening the response body with `openpyxl` to confirm it's a
-  valid `.xlsx`), `GET /receipts` returning real saved receipts,
+  valid `.xlsx`), `GET /receipts` returning real saved receipts and
+  filtering correctly when `date_from`/`date_to` are passed,
   `POST /receipts/preview` returning rows/grand_total matching
   `compute_receipt_rows` directly (plus that unknown ids in the request are
   skipped rather than erroring), and `POST /receipts/delete` removing only
