@@ -43,9 +43,18 @@ def require_login_web(request: Request) -> None:
         )
 
 
+def _has_valid_api_token(request: Request) -> bool:
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return False
+    token = auth_header.removeprefix("Bearer ")
+    return bool(settings.api_token) and hmac.compare_digest(token, settings.api_token)
+
+
 def require_login_api(request: Request) -> None:
-    if not is_authenticated(request):
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    if is_authenticated(request) or _has_valid_api_token(request):
+        return
+    raise HTTPException(status_code=401, detail="Not authenticated")
 
 
 if __name__ == "__main__":

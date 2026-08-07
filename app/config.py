@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     auth_username: str = ""
     auth_password_hash: str = ""
     session_secret_key: str = ""
+    api_token: str = ""
 
 
 settings = Settings()
