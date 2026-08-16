@@ -19,7 +19,22 @@
       "Edit",
       "Write",
       "Bash",
-      "Bash(rm /Users/edoardofilippi/Development/recap_scontrini/.env /tmp/cookies.txt)"
+      "Bash(rm /Users/edoardofilippi/Development/recap_scontrini/.env /tmp/cookies.txt)",
+      "Read",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git blame*)",
+      "Bash(git ls-files*)",
+      "Bash(git remote*)",
+      "Bash(git tag*)",
+      "Bash(git stash list*)",
+      "Bash(git rev-parse*)",
+      "Bash(git grep *)",
+      "Bash(git describe*)",
+      "Bash(git shortlog*)"
     ],
     "ask": [
       "Bash(git *)"
