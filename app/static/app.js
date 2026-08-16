@@ -61,29 +61,42 @@ function refreshList() {
 }
 
 function uploadReceipt(file) {
-  const statusEl = document.getElementById("upload-status");
   const formData = new FormData();
   formData.append("file", file);
 
-  statusEl.textContent = "Uploading…";
-
-  fetch("/api/receipts/upload", {
+  return fetch("/api/receipts/upload", {
     method: "POST",
     body: formData,
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
-      statusEl.textContent = "✓ Upload successful";
-      refreshList();
-      setTimeout(() => {
-        statusEl.textContent = "";
-      }, 4000);
-    })
-    .catch(() => {
-      statusEl.textContent = "✗ Upload failed";
-    });
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error("Upload failed");
+    }
+  });
+}
+
+async function uploadReceipts(files) {
+  const statusEl = document.getElementById("upload-status");
+  let succeeded = 0;
+  let failed = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    statusEl.textContent = `Uploading ${i + 1}/${files.length}…`;
+    try {
+      await uploadReceipt(files[i]);
+      succeeded++;
+    } catch {
+      failed++;
+    }
+  }
+
+  statusEl.textContent =
+    failed === 0
+      ? `✓ ${succeeded} uploaded`
+      : `✓ ${succeeded} uploaded, ✗ ${failed} failed`;
+  refreshList();
+  setTimeout(() => {
+    statusEl.textContent = "";
+  }, 4000);
 }
 
 function renderPreview(data) {
@@ -194,8 +207,9 @@ document.getElementById("filter-date-from").addEventListener("change", refreshLi
 document.getElementById("filter-date-to").addEventListener("change", refreshList);
 
 document.getElementById("upload-input").addEventListener("change", (event) => {
-  const file = event.target.files[0];
-  if (file) {
-    uploadReceipt(file);
+  const files = event.target.files;
+  if (files.length > 0) {
+    uploadReceipts(files);
   }
+  event.target.value = "";
 });
