@@ -181,6 +181,7 @@ function updatePreview() {
 function updateSelectedCount() {
   document.getElementById("selected-count").textContent =
     `${selectedIds.size} selected`;
+  document.getElementById("delete-btn").disabled = selectedIds.size === 0;
 }
 
 function deleteSelected() {

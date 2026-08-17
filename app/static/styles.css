@@ -183,6 +183,16 @@ h1 {
   background: color-mix(in srgb, #dc2626 10%, transparent);
 }
 
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  background: transparent;
+  transform: none;
+}
+
 .table-wrap {
   overflow-x: auto;
   border: 1px solid var(--border);
