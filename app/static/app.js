@@ -207,9 +207,9 @@ document.getElementById("filter-date-from").addEventListener("change", refreshLi
 document.getElementById("filter-date-to").addEventListener("change", refreshList);
 
 document.getElementById("upload-input").addEventListener("change", (event) => {
-  const files = event.target.files;
+  const files = Array.from(event.target.files);
+  event.target.value = "";
   if (files.length > 0) {
     uploadReceipts(files);
   }
-  event.target.value = "";
 });
