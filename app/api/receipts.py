@@ -2,11 +2,17 @@ from typing import cast, get_args
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.responses import Response
+from pydantic import ValidationError
 
 from app.auth import require_login_api
 from app.models.receipt import Receipt
 from app.services.excel_export import compute_receipt_rows, receipt_to_excel
-from app.services.extraction import SupportedMediaType, extract_receipt
+from app.services.extraction import (
+    GeminiOutageError,
+    NoReceiptTextError,
+    SupportedMediaType,
+    extract_receipt,
+)
 from app.services.session_store import (
     delete_receipt,
     get_receipt,
@@ -39,6 +45,18 @@ async def upload_receipt(file: UploadFile) -> dict[str, str | Receipt]:
     media_type = cast(SupportedMediaType, file.content_type)
     try:
         receipt = extract_receipt(image_bytes, media_type)
+    except GeminiOutageError as e:
+        raise HTTPException(
+            status_code=503, detail={"message": str(e), "error": "gemini outage"}
+        )
+    except NoReceiptTextError as e:
+        raise HTTPException(
+            status_code=503, detail={"message": str(e), "error": "no text"}
+        )
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=503, detail={"message": str(e), "error": "schema mismatch"}
+        )
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
     receipt_id = save_receipt(receipt)

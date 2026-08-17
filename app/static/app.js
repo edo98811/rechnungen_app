@@ -67,9 +67,18 @@ function uploadReceipt(file) {
   return fetch("/api/receipts/upload", {
     method: "POST",
     body: formData,
-  }).then((response) => {
+  }).then(async (response) => {
     if (!response.ok) {
-      throw new Error("Upload failed");
+      let label = `${response.status}`;
+      try {
+        const body = await response.json();
+        if (body.detail && typeof body.detail === "object" && body.detail.error) {
+          label = `${response.status}, ${body.detail.error}`;
+        }
+      } catch {
+        // response body wasn't JSON; fall back to the status code alone
+      }
+      throw new Error(label);
     }
   });
 }
@@ -77,22 +86,22 @@ function uploadReceipt(file) {
 async function uploadReceipts(files) {
   const statusEl = document.getElementById("upload-status");
   let succeeded = 0;
-  let failed = 0;
+  const failedCodes = [];
 
   for (let i = 0; i < files.length; i++) {
     statusEl.textContent = `Uploading ${i + 1}/${files.length}…`;
     try {
       await uploadReceipt(files[i]);
       succeeded++;
-    } catch {
-      failed++;
+    } catch (err) {
+      failedCodes.push(err.message);
     }
   }
 
   statusEl.textContent =
-    failed === 0
+    failedCodes.length === 0
       ? `✓ ${succeeded} uploaded`
-      : `✓ ${succeeded} uploaded, ✗ ${failed} failed`;
+      : `✓ ${succeeded} uploaded, ✗ ${failedCodes.length} failed (${failedCodes.join(", ")})`;
   refreshList();
   setTimeout(() => {
     statusEl.textContent = "";

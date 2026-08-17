@@ -3,10 +3,13 @@ from unittest.mock import patch
 
 import openpyxl
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app.main import app
+from app.models.receipt import Receipt
 from app.services import session_store
 from app.services.excel_export import compute_receipt_rows
+from app.services.extraction import GeminiOutageError, NoReceiptTextError
 
 client = TestClient(app)
 
@@ -115,6 +118,50 @@ def test_upload_rejects_unsupported_media_type():
     )
 
     assert response.status_code == 400
+
+
+def test_upload_labels_gemini_outage():
+    with patch(
+        "app.api.receipts.extract_receipt",
+        side_effect=GeminiOutageError("Gemini API error: high demand"),
+    ):
+        response = client.post(
+            "/api/receipts/upload",
+            files={"file": ("receipt.jpg", b"fake-bytes", "image/jpeg")},
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["error"] == "gemini outage"
+
+
+def test_upload_labels_no_text():
+    with patch(
+        "app.api.receipts.extract_receipt",
+        side_effect=NoReceiptTextError("Gemini did not return a parsed receipt"),
+    ):
+        response = client.post(
+            "/api/receipts/upload",
+            files={"file": ("receipt.jpg", b"fake-bytes", "image/jpeg")},
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["error"] == "no text"
+
+
+def test_upload_labels_schema_mismatch():
+    try:
+        Receipt.model_validate({})
+    except ValidationError as e:
+        validation_error = e
+
+    with patch("app.api.receipts.extract_receipt", side_effect=validation_error):
+        response = client.post(
+            "/api/receipts/upload",
+            files={"file": ("receipt.jpg", b"fake-bytes", "image/jpeg")},
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["error"] == "schema mismatch"
 
 
 def test_export_unknown_id_returns_404():
