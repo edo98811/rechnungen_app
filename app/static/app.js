@@ -3,6 +3,15 @@ const selectedIds = new Set();
 
 let previewDebounceTimer = null;
 
+/**
+ * Rebuilds the `#receipt-rows` table body from scratch for the given
+ * `receipts` array (each entry `{ id, receipt }`, as returned by
+ * `GET /api/receipts`). For every entry, creates a row with a checkbox
+ * (checked if `id` is already in `selectedIds`), a date cell, and a store
+ * name cell. The checkbox's `change` handler adds/removes `id` from
+ * `selectedIds` and then calls `updateSelectedCount()` and
+ * `updatePreview()` to keep the counter and preview panel in sync.
+ */
 function renderList(receipts) {
   const tbody = document.getElementById("receipt-rows");
   tbody.innerHTML = "";
@@ -40,6 +49,13 @@ function renderList(receipts) {
   }
 }
 
+/**
+ * Reads the `#filter-date-from`/`#filter-date-to` inputs and, if either is
+ * set, appends them as `date_from`/`date_to` query params. Fetches
+ * `GET /api/receipts` (optionally filtered), stores the parsed JSON in the
+ * module-level `allReceipts`, and passes it to `renderList` to redraw the
+ * table.
+ */
 function refreshList() {
   const dateFrom = document.getElementById("filter-date-from").value;
   const dateTo = document.getElementById("filter-date-to").value;
@@ -60,6 +76,17 @@ function refreshList() {
     });
 }
 
+/**
+ * Uploads a single `file` to `POST /api/receipts/upload` as multipart form
+ * data (field name `file`) and returns the fetch promise. On a non-OK
+ * response, builds an error label starting with the HTTP status code and,
+ * if the JSON body has a `detail.error` string (the short label the
+ * backend attaches for known failure modes like "gemini outage" or
+ * "no text"), appends it as `"<status>, <error>"`; if the body isn't JSON
+ * or lacks that field, the label stays just the status code. Throws an
+ * `Error` with that label so callers (see `uploadReceipts`) can report
+ * per-file failure reasons.
+ */
 function uploadReceipt(file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -83,6 +110,18 @@ function uploadReceipt(file) {
   });
 }
 
+/**
+ * Uploads a list/array-like of `files` one at a time (sequentially
+ * `await`-ing each `uploadReceipt` call, not in parallel), updating
+ * `#upload-status` with `"Uploading i/N…"` before each one starts.
+ * Successes increment a `succeeded` counter; failures push the thrown
+ * error's message into `failedCodes` instead of aborting the batch, so
+ * one bad file doesn't stop the rest from uploading. When the loop ends,
+ * sets `#upload-status` to a summary (`"✓ N uploaded"`, or with a
+ * `"✗ M failed (...)"` suffix listing each failure's label if any failed),
+ * calls `refreshList()` once to pick up the newly uploaded receipts, and
+ * clears the status text after a 4-second delay.
+ */
 async function uploadReceipts(files) {
   const statusEl = document.getElementById("upload-status");
   let succeeded = 0;
@@ -108,6 +147,15 @@ async function uploadReceipts(files) {
   }, 4000);
 }
 
+/**
+ * Clears and redraws `#preview-panel` from the `{ rows, grand_total }`
+ * shape returned by `POST /api/receipts/preview`. If `rows` is missing or
+ * empty, leaves the panel empty and returns early. Otherwise builds a
+ * table with a fixed header row (`product_name`, `price`, `quantity`,
+ * `price_per_item`, `user_id`, `date`, `shop_name`), one body row per
+ * entry in `data.rows`, wraps the table in a `.table-wrap` div, and
+ * appends a trailing `"Grand total: <data.grand_total>"` paragraph.
+ */
 function renderPreview(data) {
   const panel = document.getElementById("preview-panel");
   panel.innerHTML = "";
@@ -159,6 +207,15 @@ function renderPreview(data) {
   panel.appendChild(total);
 }
 
+/**
+ * Debounced refresh of the receipt preview panel, triggered whenever the
+ * selection changes (see `renderList`'s checkbox handler). Cancels any
+ * pending `previewDebounceTimer`. If `selectedIds` is empty, immediately
+ * clears `#preview-panel` and returns. Otherwise schedules, after a
+ * 300ms delay, a `POST /api/receipts/preview` call with the selected ids
+ * as a JSON array body, and passes the parsed response to
+ * `renderPreview`.
+ */
 function updatePreview() {
   clearTimeout(previewDebounceTimer);
 
@@ -178,12 +235,27 @@ function updatePreview() {
   }, 300);
 }
 
+/**
+ * Updates `#selected-count`'s text to `"<N> selected"` based on the
+ * current size of `selectedIds`, and toggles `#delete-btn`'s `disabled`
+ * state so it's only clickable when at least one receipt is selected.
+ */
 function updateSelectedCount() {
   document.getElementById("selected-count").textContent =
     `${selectedIds.size} selected`;
   document.getElementById("delete-btn").disabled = selectedIds.size === 0;
 }
 
+/**
+ * Handles the "Delete selected" button click. Returns immediately if
+ * `selectedIds` is empty, or if the user cancels a native `confirm()`
+ * dialog asking them to confirm deleting `selectedIds.size` receipt(s).
+ * Otherwise `POST`s the selected ids as JSON to `/api/receipts/delete`;
+ * on a non-OK response throws an `Error` (unhandled — surfaces as a
+ * console error), and on success clears `selectedIds`, calls
+ * `updateSelectedCount()`, empties `#preview-panel`, and calls
+ * `refreshList()` to reflect the deletion.
+ */
 function deleteSelected() {
   if (selectedIds.size === 0) {
     return;
@@ -216,6 +288,15 @@ document.getElementById("delete-btn").addEventListener("click", deleteSelected);
 document.getElementById("filter-date-from").addEventListener("change", refreshList);
 document.getElementById("filter-date-to").addEventListener("change", refreshList);
 
+/**
+ * `change` handler for `#upload-input`. Snapshots `event.target.files`
+ * (a live `FileList`) into a plain array before resetting
+ * `event.target.value` — clearing the input's value empties the live
+ * `FileList` in place, so the copy must happen first or a multi-file
+ * batch would lose its remaining files mid-upload. Resetting the value
+ * also ensures re-selecting the same file(s) later still fires `change`.
+ * If any files were selected, hands the array off to `uploadReceipts`.
+ */
 document.getElementById("upload-input").addEventListener("change", (event) => {
   const files = Array.from(event.target.files);
   event.target.value = "";
