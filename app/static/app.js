@@ -237,13 +237,15 @@ function updatePreview() {
 
 /**
  * Updates `#selected-count`'s text to `"<N> selected"` based on the
- * current size of `selectedIds`, and toggles `#delete-btn`'s `disabled`
- * state so it's only clickable when at least one receipt is selected.
+ * current size of `selectedIds`, and toggles the `disabled` state of both
+ * `#delete-btn` and `#download-btn` so they're only clickable when at
+ * least one receipt is selected.
  */
 function updateSelectedCount() {
   document.getElementById("selected-count").textContent =
     `${selectedIds.size} selected`;
   document.getElementById("delete-btn").disabled = selectedIds.size === 0;
+  document.getElementById("download-btn").disabled = selectedIds.size === 0;
 }
 
 /**
